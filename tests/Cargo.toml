@@ -1,6 +1,6 @@
 [package]
 name = "tests"
-description = "Test suite for pg_analytics"
+description = "Test suite for th_dbdm"
 version = "0.2.3"
 edition = "2021"
 license = "PostgreSQL"

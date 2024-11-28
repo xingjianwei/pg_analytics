@@ -1284,7 +1284,7 @@ pub enum DataTypeError {
 impl std::fmt::Display for DataTypeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DataTypeError::DataTypeMismatch(arg1, arg2, arg3) => write!(f, "Column {} has Arrow data type {:?} but is mapped to the {:?} type in Postgres, which are incompatible. If you believe this conversion should be supported, please submit a request at https://github.com/paradedb/paradedb/issues.", arg1, arg2, arg3),
+            DataTypeError::DataTypeMismatch(arg1, arg2, arg3) => write!(f, "Column {} has Arrow data type {:?} but is mapped to the {:?} type in Postgres, which are incompatible.", arg1, arg2, arg3),
         }
     }
 }

@@ -35,7 +35,7 @@ impl DebugGucSettings {
 
     pub fn init(&self) {
         GucRegistry::define_bool_guc(
-            "paradedb.disable_executor",
+            "thdb.disable_executor",
             "Disable executor hook to test FDW.",
             "Disable executor hook to test FDW.",
             &self.disable_executor,
@@ -44,7 +44,7 @@ impl DebugGucSettings {
         );
 
         GucRegistry::define_bool_guc(
-            "paradedb.disable_fdw",
+            "thdb.disable_fdw",
             "Disable FDW to test executor hook.",
             "Disable FDW to test executor hook.",
             &self.disable_fdw,

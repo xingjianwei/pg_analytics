@@ -525,7 +525,7 @@ async fn test_executor_hook_search_path(mut conn: PgConnection, tempdir: TempDir
     (&format!("{create_table_t2} OPTIONS (files '{file_path}');")).execute(&mut conn);
 
     // Set force executor hook pushdown
-    "SET paradedb.disable_fdw = true".execute(&mut conn);
+    "SET thdb.disable_fdw = true".execute(&mut conn);
 
     let ret = "SELECT * FROM t1".execute_result(&mut conn);
     assert!(ret.is_err(), "{:?}", ret);

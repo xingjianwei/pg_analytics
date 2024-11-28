@@ -60,10 +60,10 @@ pub fn database() -> Db {
 pub fn conn(database: Db) -> PgConnection {
     block_on(async {
         let mut conn = database.connection().await;
-        sqlx::query("CREATE EXTENSION pg_analytics;")
+        sqlx::query("CREATE EXTENSION th_dbdm;")
             .execute(&mut conn)
             .await
-            .expect("could not create extension pg_analytics");
+            .expect("could not create extension th_dbdm");
         conn
     })
 }
@@ -72,10 +72,10 @@ pub fn conn(database: Db) -> PgConnection {
 pub fn conn_with_pg_search(database: Db) -> PgConnection {
     block_on(async {
         let mut conn = database.connection().await;
-        sqlx::query("CREATE EXTENSION pg_analytics;")
+        sqlx::query("CREATE EXTENSION th_dbdm;")
             .execute(&mut conn)
             .await
-            .expect("could not create extension pg_analytics");
+            .expect("could not create extension th_dbdm");
         conn
     })
 }

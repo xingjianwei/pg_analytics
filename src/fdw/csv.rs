@@ -26,8 +26,8 @@ use super::base::*;
 use crate::duckdb::{csv::CsvOption, secret::UserMappingOptions};
 
 #[wrappers_fdw(
-    author = "ParadeDB",
-    website = "https://github.com/paradedb/paradedb",
+    author = "thdb",
+    website = "http://www.thedatasys.com/",
     error_type = "BaseFdwError"
 )]
 pub(crate) struct CsvFdw {
