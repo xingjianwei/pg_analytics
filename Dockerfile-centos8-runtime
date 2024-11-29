@@ -1,109 +1,33 @@
-FROM thdb:15.10 AS builder
+FROM thdb:15.10-centos8 AS builder
 LABEL MAINTAINER="xingjw"
 ENV LANG=en_US.UTF-8
-ARG PACKAGE_NAME='PostgreSQL'
+ARG PACKAGE_NAME='th_dbdm'
 ARG PACKAGE_TARNAME='thdb'
-ARG PACKAGE_VERSION='15.10'
+ARG PACKAGE_VERSION='1.2.3'
 
-# Update yum source
-RUN sed -e "s|^mirrorlist=|#mirrorlist=|g" \
-    -e "s|^#baseurl=http://mirror.centos.org/centos/\$releasever|baseurl=https://mirrors.tuna.tsinghua.edu.cn/centos-vault/8.4.2105|g" \
-    -e "s|^#baseurl=http://mirror.centos.org/\$contentdir/\$releasever|baseurl=https://mirrors.tuna.tsinghua.edu.cn/centos-vault/8.4.2105|g" \
-    -i.bak \
-    /etc/yum.repos.d/CentOS-*.repo
+USER root
+RUN yum makecache \
+&& yum -y update \
+&& yum group install "Development Tools" -y
+
+
+ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo
+ENV PATH=$CARGO_HOME/bin:$PATH
+
+RUN mkdir -p "$CARGO_HOME" && mkdir -p "$RUSTUP_HOME" && \
+    curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable && \
+    chmod -R a=rwX $CARGO_HOME
 
 # Install deps
-RUN yum makecache \
-    && yum -y update \
-    && yum install -y glibc-langpack-zh glibc-langpack-en \
-    && yum install -y autoconf cmake make gcc gcc-c++ perl readline readline-devel zlib zlib-devel \
-    perl-devel python36 python36-devel tcl tcl-devel openssl openssl-devel ncurses-devel openldap openldap-devel pam pam-devel libxml2 libxml2-devel libxslt libxslt-devel \
-    perl-ExtUtils-Embed libicu-devel wget bison flex systemtap systemtap-sdt-devel systemd-devel \
-    docbook-dtds docbook-style-xsl libxslt llvm llvm-devel clang lz4 lz4-devel zstd libzstd-devel uuid libuuid libuuid-devel
+RUN yum install -y bison readline-devel zlib-devel openssl-devel wget clang
 
-RUN wget https://repo.almalinux.org/almalinux/8/PowerTools/x86_64/os/Packages/uuid-devel-1.6.2-43.el8.x86_64.rpm \
-    && rpm -ivh uuid-devel-1.6.2-43.el8.x86_64.rpm
-
+RUN cargo install --locked cargo-pgrx  --version 0.12.7
+RUN cargo pgrx init --pg15 download
 COPY . $PACKAGE_NAME-$PACKAGE_VERSION
-# --enable-debug不建议在生产平台使用，
-# --enable-dtrace 详细的 bug 报告非常有用，在支持 DTrace 的平台上，在生产中使用也可能是合理的
-# --prefix=/opt/$PACKAGE_TARNAME --with-pgport=5432 --with-perl --with-tcl --with-python --with-openssl --with-pam --without-ldap --with-libxml --with-libxslt --enable-thread-safety --with-wal-blocksize=8 --with-blocksize=8 --enable-dtrace --with-systemd PYTHON=/usr/bin/python3.6
 RUN cd $PACKAGE_NAME-$PACKAGE_VERSION \
-    && autoconf \
-    && ./configure --prefix=/opt/$PACKAGE_TARNAME --enable-rpath --with-lz4 --with-zstd --with-icu \
-    --with-llvm --with-perl --with-python --with-tcl --with-openssl --with-pam --with-gssapi \
-    --enable-nls --enable-dtrace --with-uuid=e2fs --with-libxml --with-libxslt --with-ldap --with-selinux \
-    --with-systemd --with-system-tzdata=/usr/share/zoneinfo --with-ossp-uuid \
-    && make -j6 world \
-    && make install-world
-RUN rm -fr /opt/$PACKAGE_TARNAME/include
-
-
-FROM centos:8
-LABEL MAINTAINER="xingjw"
-ENV LANG=en_US.UTF-8
-ARG PACKAGE_NAME='PostgreSQL'
-ARG PACKAGE_TARNAME='thdb'
-ARG PACKAGE_VERSION='15.10'
-ARG PACKAGE_USER='postgres'
-ARG PACKAGE_EXT=''
-
-# Update yum source
-RUN sed -e "s|^mirrorlist=|#mirrorlist=|g" \
-    -e "s|^#baseurl=http://mirror.centos.org/centos/\$releasever|baseurl=https://mirrors.tuna.tsinghua.edu.cn/centos-vault/8.4.2105|g" \
-    -e "s|^#baseurl=http://mirror.centos.org/\$contentdir/\$releasever|baseurl=https://mirrors.tuna.tsinghua.edu.cn/centos-vault/8.4.2105|g" \
-    -i.bak \
-    /etc/yum.repos.d/CentOS-*.repo
-
-# Install deps
-RUN yum makecache \
-    && yum -y update \
-    && yum install -y glibc-langpack-zh glibc-langpack-en \
-    && yum install -y perl readline zlib \
-    python36 tcl openssl ncurses openldap pam libxml2 libxslt \
-    perl-ExtUtils-Embed libicu bison flex systemtap systemd \
-    lz4 zstd uuid libuuid \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*
-
-COPY --from=builder /opt/$PACKAGE_TARNAME /opt/$PACKAGE_TARNAME
-
-# 创建 $PACKAGE_USER 用户，并指定环境变量
-# 在许多 Linux 系统中，$PACKAGE_USER 用户的 UID 默认为 26
-RUN useradd -u 26 $PACKAGE_USER \
-    && echo "export PGDATA=/var/lib/pgsql/15/data" >> /home/$PACKAGE_USER/.bash_profile \
-    && echo "export PGHOME=/opt/$PACKAGE_TARNAME" >> /home/$PACKAGE_USER/.bash_profile \
-    && echo "export PATH=\$PGHOME/bin:\$PATH" >> /home/$PACKAGE_USER/.bash_profile 
-# 创建 PGDATA 目录，并初始化 PG 实例
-# PGDATA
-
-RUN cp -v /opt/$PACKAGE_TARNAME/share/postgresql/postgresql.conf.sample /opt/$PACKAGE_TARNAME/share/postgresql/postgresql.conf.sample.orig; \
-	sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" /opt/$PACKAGE_TARNAME/share/postgresql/postgresql.conf.sample; \
-	grep -F "listen_addresses = '*'" /opt/$PACKAGE_TARNAME/share/postgresql/postgresql.conf.sample; \
-    sed -i -e "s/^#logging_collector = off.*$/logging_collector = on/" /opt/$PACKAGE_TARNAME/share/postgresql/postgresql.conf.sample; \
-    grep -F "logging_collector = on" /opt/$PACKAGE_TARNAME/share/postgresql/postgresql.conf.sample; \
-    sed -ri "s!^#?(log_directory)\s*=\s*.*!\1 = '$PACKAGE_TARNAME-log'!" /opt/$PACKAGE_TARNAME/share/postgresql/postgresql.conf.sample; \
-    sed -ri "s!^#?(shared_preload_libraries)\s*=\s*.*!\1 = 'pg_stat_statements'!" /opt/$PACKAGE_TARNAME/share/postgresql/postgresql.conf.sample; \
-    sed -i -e "s/^#max_connections = 100.*$/max_connections = 500/" /opt/$PACKAGE_TARNAME/share/postgresql/postgresql.conf.sample; \
-    sed -i -e "s/^#shared_buffers = 128MB.*$/shared_buffers = 1024MB/" /opt/$PACKAGE_TARNAME/share/postgresql/postgresql.conf.sample;
-
-RUN mkdir -p /var/lib/pgsql/15/data && chown -R $PACKAGE_USER:$PACKAGE_USER /var/lib/pgsql
-ENV PGDATA=/var/lib/pgsql/15/data
-
-# Init
-ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/$PACKAGE_TARNAME/bin
-RUN su -l $PACKAGE_USER -c "initdb --pgdata='$PGDATA'" 2>&1 < /dev/null
-
-RUN echo "host    all             all             0.0.0.0/0           trust" >> /var/lib/pgsql/15/data/pg_hba.conf
-
-# pg_hba.conf add host all all 0.0.0.0/0 md5
-
-#  设置$PACKAGE_USER密码
-
-# Port
-EXPOSE 5432
-
-
-# Start $PACKAGE_TARNAME
-USER $PACKAGE_USER
-CMD ["thdb", "-D", "/var/lib/pgsql/15/data"]
+&& cargo pgrx package --pg-config /opt/thdb/bin/th_config
+#&& cargo pgrx package --pg-config /root/.pgrx/15.8/pgrx-install/bin/pg_config
+#docker build -t pgrx-thdbdm:15-centos8  -f Dockerfile-centos8-runtime .
+#docker container create --name thextcontainer $imagename-$osname
+#docker container cp thextcontainer:/th_dbdm-1.2.3/target/release/th_dbdm-pg15 $INSTALLDIR$LICENSEFLAG/temp/
+#docker container rm -f thextcontainer
