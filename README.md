@@ -3,7 +3,6 @@
 <br>
 </h1>
 
-[![Publish pg_analytics](https://github.com/paradedb/pg_analytics/actions/workflows/publish-pg_analytics.yml/badge.svg)](https://github.com/paradedb/pg_analytics/actions/workflows/publish-pg_analytics.yml)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/paradedb)](https://artifacthub.io/packages/search?repo=paradedb)
 [![Docker Pulls](https://img.shields.io/docker/pulls/paradedb/paradedb)](https://hub.docker.com/r/paradedb/paradedb)
 [![License](https://img.shields.io/badge/License-PostgreSQL-blue)](https://github.com/paradedb/pg_analytics?tab=PostgreSQL-1-ov-file#readme)
@@ -81,13 +80,9 @@ shared_preload_libraries = 'pg_analytics'
 
 This ensures the best query performance from the extension.
 
-#### Linux
+#### Linux & macOS
 
-We provide prebuilt binaries for Debian, Ubuntu, and Red Hat Enterprise Linux for Postgres 14+. You can download the latest version for your architecture from the [GitHub Releases page](https://github.com/paradedb/paradedb/releases).
-
-#### macOS
-
-At this time, we do not provide prebuilt binaries for macOS. If you are running Postgres on macOS and want to install `pg_analytics`, please follow the [development](#development) instructions, replacing `cargo pgrx run` by `cargo pgrx install --release`. This will build the extension from source and install it in your macOS Postgres instance (e.g. Homebrew).
+We provide prebuilt binaries for macOS, Debian, Ubuntu, and Red Hat Enterprise Linux for Postgres 14+. You can download the latest version for your architecture from the [GitHub Releases page](https://github.com/paradedb/paradedb/releases).
 
 #### Windows
 
