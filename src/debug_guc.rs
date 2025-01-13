@@ -23,6 +23,9 @@ pub struct DebugGucSettings {
 
     // disable FDW to test executor hook
     pub disable_fdw: GucSetting<bool>,
+
+    // disable executor hook to datafusion
+    pub disable_datafusion: GucSetting<bool>,
 }
 
 impl DebugGucSettings {
@@ -30,6 +33,7 @@ impl DebugGucSettings {
         Self {
             disable_executor: GucSetting::<bool>::new(false),
             disable_fdw: GucSetting::<bool>::new(false),
+            disable_datafusion: GucSetting::<bool>::new(true),
         }
     }
 
@@ -48,6 +52,15 @@ impl DebugGucSettings {
             "Disable FDW to test executor hook.",
             "Disable FDW to test executor hook.",
             &self.disable_fdw,
+            GucContext::Userset,
+            GucFlags::default(),
+        );
+
+        GucRegistry::define_bool_guc(
+            "thdb.disable_datafusion",
+            "Disable executor hook to datafusion.",
+            "Disable executor hook to datafusion.",
+            &self.disable_datafusion,
             GucContext::Userset,
             GucFlags::default(),
         );
