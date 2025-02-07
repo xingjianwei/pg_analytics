@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Retake, Inc.
+// Copyright (c) 2023-2025 Retake, Inc.
 //
 // This file is part of ParadeDB - Postgres for Search and Analytics
 //
@@ -687,5 +687,18 @@ async fn test_view_foreign_table(mut conn: PgConnection, tempdir: TempDir) -> Re
 
     let res: (i32,) = "SELECT int32_col FROM primitive_join_view".fetch_one(&mut conn);
     assert_eq!(res.0, 1);
+    Ok(())
+}
+
+#[rstest]
+async fn test_doesnt_break_prepare(mut conn: PgConnection) -> Result<()> {
+    let ret = "
+        PREPARE getColumnACLs(pg_catalog.oid) AS                                                                                                                                                     
+        SELECT at.attname, at.attacl, '{}' AS acldefault, pip.privtype, pip.initprivs 
+        FROM pg_catalog.pg_attribute at LEFT JOIN pg_catalog.pg_init_privs pip 
+        ON (at.attrelid = pip.objoid AND pip.classoid = 'pg_catalog.pg_class'::pg_catalog.regclass AND at.attnum = pip.objsubid) 
+        WHERE at.attrelid = $1 AND NOT at.attisdropped AND (at.attacl IS NOT NULL OR pip.initprivs IS NOT NULL) ORDER BY at.attnum
+    ".execute_result(&mut conn);
+    assert!(ret.is_ok());
     Ok(())
 }

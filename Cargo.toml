@@ -1,7 +1,7 @@
 [package]
 name = "th_dbdm"
 description = "Postgres for database data management"
-version = "1.3.0"
+version = "1.3.3"
 edition = "2021"
 license = "PostgreSQL"
 

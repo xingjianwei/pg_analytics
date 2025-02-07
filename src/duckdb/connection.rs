@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Retake, Inc.
+// Copyright (c) 2023-2025 Retake, Inc.
 //
 // This file is part of ParadeDB - Postgres for Search and Analytics
 //
@@ -22,6 +22,7 @@ use signal_hook::consts::signal::*;
 use signal_hook::iterator::Signals;
 use std::cell::UnsafeCell;
 use std::collections::HashMap;
+use std::ffi::CStr;
 use std::sync::Once;
 use std::thread;
 
@@ -35,6 +36,18 @@ static INIT: Once = Once::new();
 
 fn init_globals() {
     let conn = Connection::open_in_memory().expect("failed to open duckdb connection");
+
+    // Force DuckDB to install its extensions in the PGDATA directory, which is writable,
+    // in case the rest of the filesystem is read-only
+    let _ =
+        set_duckdb_extension_directory(&conn).expect("failed to set duckdb extension directory");
+
+    // duckdb-rs stopped bundling in httpfs, so we need to load it ourselves
+    conn.execute("INSTALL httpfs", [])
+        .expect("failed to install httpfs");
+    conn.execute("LOAD httpfs", [])
+        .expect("failed to load httpfs");
+
     unsafe {
         GLOBAL_CONNECTION = Some(UnsafeCell::new(conn));
         GLOBAL_STATEMENT = Some(UnsafeCell::new(None));
@@ -253,6 +266,19 @@ pub fn set_search_path(search_path: Vec<String>) -> Result<()> {
     execute(format!("SET search_path TO '{schemas}'").as_str(), [])?;
 
     Ok(())
+}
+
+pub fn set_duckdb_extension_directory(conn: &Connection) -> Result<usize> {
+    let data_dir = unsafe {
+        CStr::from_ptr(pgrx::pg_sys::DataDir)
+            .to_str()
+            .map_err(|e| anyhow::anyhow!("Failed to convert DataDir to &str: {}", e))?
+    };
+    conn.execute(
+        format!("SET extension_directory = '{data_dir}'").as_str(),
+        [],
+    )
+    .map_err(|err| anyhow!("{err}"))
 }
 
 pub fn execute_explain(query: &str) -> Result<String> {
