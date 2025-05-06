@@ -1,0 +1,33 @@
+FROM thdb:15.10-centos8 AS builder
+LABEL MAINTAINER="xingjw"
+ENV LANG=en_US.UTF-8
+ARG PACKAGE_NAME='th_dbdm'
+ARG PACKAGE_TARNAME='thdb'
+ARG PACKAGE_VERSION='1.2.3'
+
+USER root
+RUN yum makecache \
+&& yum -y update \
+&& yum group install "Development Tools" -y
+
+
+ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo
+ENV PATH=$CARGO_HOME/bin:$PATH
+
+RUN mkdir -p "$CARGO_HOME" && mkdir -p "$RUSTUP_HOME" && \
+    curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable && \
+    chmod -R a=rwX $CARGO_HOME
+
+# Install deps
+RUN yum install -y bison readline-devel zlib-devel openssl-devel wget clang
+
+RUN cargo install --locked cargo-pgrx  --version 0.12.7
+RUN cargo pgrx init --pg15 download
+COPY . $PACKAGE_NAME-$PACKAGE_VERSION
+RUN cd $PACKAGE_NAME-$PACKAGE_VERSION \
+&& cargo pgrx package --pg-config /opt/thdb/bin/th_config
+#&& cargo pgrx package --pg-config /root/.pgrx/15.8/pgrx-install/bin/pg_config
+#docker build -t pgrx-thdbdm:15-centos8  -f Dockerfile-centos8-runtime .
+#docker container create --name thextcontainer $imagename-$osname
+#docker container cp thextcontainer:/th_dbdm-1.2.3/target/release/th_dbdm-pg15 $INSTALLDIR$LICENSEFLAG/temp/
+#docker container rm -f thextcontainer

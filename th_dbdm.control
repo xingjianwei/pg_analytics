@@ -1,0 +1,5 @@
+comment = 'th_dbdm: Postgres for database data management'
+default_version = '@CARGO_VERSION@'
+module_pathname = '$libdir/th_dbdm'
+relocatable = false
+superuser = false
